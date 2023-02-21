@@ -1,100 +1,62 @@
-#include <stdio.h>
-#include <time.h>
+#include <iostream>
+#include <cstdlib>
 #include <omp.h>
-#include <stdlib.h>
 
+using namespace std;
 
-int main() {
-    int i, j, n, a[719][719], b[719], c[719];
-
-    clock_t start = clock();
-
-    n = 100; //Max 719
-
-    printf("Matrix A\n");
-
-    for (i = 0; i < n; ++i) {
-        for (j = 0; j < n; ++j) {
-            a[i][j] = 10;
-            printf("%d ", a[i][j]);
-        }
-        printf("\n");
-    }
-
-    printf("\nMatrix B\n");
-
-#pragma omp parallel private(i) shared(b)
-    {
-#pragma omp for
-        for (i = 0; i < n; ++i) {
-            b[i] = 5;
-            printf("%d\n", b[i]);
+void randomiseMatrix(int **matrix, int n, int m) {
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < m; j++) {
+            matrix[i][j] = rand() % 11;
         }
     }
 
-    printf("\nA * B\n");
+    return;
+}
 
-#pragma omp parallel private(i) shared(c)
-    {
-#pragma omp for
-        for (i = 0; i < n; ++i) {
-            c[i] = 0;
-        }
+int main(int argc, char** argv) {
+    srand(time(NULL));
+    int n1 = 1000;
+    int m1 = 500;
+    int n2 = 500;
+    int m2 = 1200;
+
+    //Матрица n1 x m1
+    int **matrix1;
+    //Матрица n2 x m2
+    int **matrix2;
+
+    matrix1 = (int**)malloc(sizeof(int*)*n1);
+    for(int i = 0; i < n1; i++) {
+        matrix1[i] = (int*)malloc(sizeof(int)*m1);
+    }
+    matrix2 = (int**)malloc(sizeof(int*)*n2);
+    for(int i = 0; i < n2; i++) {
+        matrix2[i] = (int*)malloc(sizeof(int)*m2);
     }
 
-#pragma omp parallel private(i,j) shared(n,a,b,c)
-    {
-#pragma omp for schedule(dynamic)
-        for (i = 0; i < n; ++i) {
-            for (j = 0; j < n; ++j) {
-                c[i] += b[j] * a[j][i];
+    // Создаем случайные матрицы для умножения
+    randomiseMatrix(matrix1, n1, m1);
+    randomiseMatrix(matrix2, n2, m2);
+
+    int **result = (int**)malloc(sizeof(int*)*n1);;
+    for(int i = 0; i < n1; i++) {
+        result[i] = (int*)malloc(sizeof(int)*m2);
+    }
+
+    // Определяем число потоков
+    int threadsNum = 2;
+    omp_set_num_threads(threadsNum);
+    int i, j, k;
+#pragma omp parallel for shared(matrix1, matrix2, result) private(i, j, k)
+    for (i = 0; i < n1; i++) {
+        for (j = 0; j < m2; j++) {
+            result[i][j] = 0;
+            for (k = 0; k < m1; k++) {
+                result[i][j] += (matrix1[i][k] * matrix2[k][j]);
             }
         }
     }
 
-
-#pragma omp parallel private(i) shared(c)
-    {
-#pragma omp for
-        for (i = 0; i < n; ++i) {
-            printf("%d\n", c[i]);
-        }
-    }
-
-    clock_t stop = clock();
-    double elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
-    printf("\nTime elapsed: %.5f\n", elapsed);
-    start = clock();
-    printf("Matrix A\n");
-
-    for (i = 0; i < n; ++i) {
-        for (j = 0; j < n; ++j) {
-            a[i][j] = 10;
-            printf("%d ", a[i][j]);
-        }
-        printf("\n");
-    }
-
-    printf("\nMatrix B\n");
-
-#pragma omp parallel private(i) shared(b)
-    {
-#pragma omp for
-        for (i = 0; i < n; ++i) {
-            b[i] = 5;
-            printf("%d\n", b[i]);
-        }
-    }
-    printf("\nA * B\n");
-    omp_set_num_threads(4);
-#pragma omp parallel for
-    for (i = 0; i < n; i++) {
-        for (j = 0; j < n; j++) {
-            c[i] += b[j] * a[j][i];
-        }
-    }
-    stop = clock();
-    elapsed = (double) (stop - start) / CLOCKS_PER_SEC;
-    printf("\nTime elapsed: %.5f\n", elapsed);
     return 0;
 }
